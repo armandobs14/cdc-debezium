@@ -1,0 +1,58 @@
+version: "3"
+services:
+
+  mysql:
+    image: debezium/example-mysql
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=debezium
+      - MYSQL_USER=mysqluser
+      - MYSQL_PASSWORD=mysqlpw
+
+  zookeper:
+    image: debezium/zookeeper
+    container_name: zookeeper
+    ports:
+     - "2181:2181"
+     - "2888:2888"
+     - "3888:3888"
+  
+  kafka:
+    image: debezium/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      - ZOOKEEPER_CONNECT=zookeper:2181
+    depends_on:
+      - zookeper
+
+  kafka_connect:
+    image: debezium/connect
+    container_name: connect
+    ports:
+      - "8083:8083"
+    environment:
+     - GROUP_ID=1 
+     - CONFIG_STORAGE_TOPIC=my_connect_configs 
+     - OFFSET_STORAGE_TOPIC=my_connect_offsets 
+     - STATUS_STORAGE_TOPIC=my_connect_statuses
+     - BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+     - zookeper
+     - kafka
+     - mysql
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    restart: "no"
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka"
